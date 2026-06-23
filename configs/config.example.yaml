@@ -1,0 +1,47 @@
+# ProxyPool example configuration.
+# Copy to the per-user config path (printed by `proxypool -h`) and edit.
+#
+#   Linux   : ~/.config/proxypool/config.yaml
+#   macOS   : ~/Library/Application Support/proxypool/config.yaml
+#   Windows : %APPDATA%\proxypool\config.yaml
+#
+# Strategy cheat sheet:
+#   random       — uniform random among healthy upstreams
+#   round-robin  — cyclical
+#   hash         — FNV hash of the destination host → sticky per-host
+#   name         — always first healthy (use "direct" if you want a passthrough)
+
+server:
+  http_listen:   "127.0.0.1:7890"   # local HTTP proxy (CONNECT + plain forward)
+  socks5_listen: "127.0.0.1:7891"   # local SOCKS5 proxy
+  api_listen:    "127.0.0.1:9090"   # web dashboard + REST API
+  api_enable:    true
+
+pool:
+  strategy:     random
+  health_check: false  # set true to periodically TCP-dial every upstream
+
+  proxies:
+    # 0. The "direct" pseudo-proxy — dials the destination itself.
+    - { name: direct, type: direct }
+
+    # 1. HTTP upstream with basic auth
+    - name: "us-http-1"
+      type: http
+      server: "1.2.3.4"
+      port: 8080
+      username: "user"
+      password: "pass"
+
+    # 2. HTTP upstream without auth
+    - name: "us-http-2"
+      type: http
+      server: "5.6.7.8"
+      port: 3128
+
+    # 3. SOCKS5 upstream
+    - name: "jp-socks-1"
+      type: socks5
+      server: "9.10.11.12"
+      port: 1080
+      # username / password are forwarded to the SOCKS5 server if provided

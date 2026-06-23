@@ -1,0 +1,32 @@
+# Local test config — uses a tiny built-in SOCKS5 echo server as the upstream
+# to validate the full chain without hitting the public internet.
+#
+# We will:
+#   - run a Python SOCKS5 echo server on 127.0.0.1:11080
+#   - point proxypool at it
+#   - curl -x through proxypool and verify the response came from the echo server
+#
+# Then we test:
+#   - random strategy with two upstreams
+#   - explicit "preferred" upstream by username
+#   - live connection counters via REST API
+
+server:
+  http_listen:   "127.0.0.1:7890"
+  socks5_listen: "127.0.0.1:7891"
+  api_listen:    "127.0.0.1:9090"
+  api_enable:    true
+
+pool:
+  strategy:     random
+  health_check: false
+  proxies:
+    - { name: direct, type: direct }
+    - name: echo-socks5
+      type: socks5
+      server: 127.0.0.1
+      port: 11080
+    - name: echo-http
+      type: http
+      server: 127.0.0.1
+      port: 11081

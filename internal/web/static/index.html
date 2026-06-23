@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <title>ProxyPool · Connections</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">⚡ ProxyPool</div>
+    <nav>
+      <button class="tab active" data-tab="connections">Connections</button>
+      <button class="tab" data-tab="proxies">Proxies</button>
+    </nav>
+    <div class="stats">
+      <span class="stat"><b id="stat-active">0</b> active</span>
+      <span class="stat up">▲ <b id="stat-up">0 B</b></span>
+      <span class="stat down">▼ <b id="stat-down">0 B</b></span>
+      <span class="stat">strategy: <b id="stat-strategy">–</b></span>
+    </div>
+  </header>
+
+  <main>
+    <!-- Connections view -->
+    <section id="view-connections" class="view active">
+      <div class="toolbar">
+        <input id="filter" placeholder="Filter by host / target / proxy…" />
+        <button id="close-all" class="danger">Close All</button>
+      </div>
+      <table id="conn-table">
+        <thead>
+          <tr>
+            <th>Start</th>
+            <th>Type</th>
+            <th>Host</th>
+            <th>Target</th>
+            <th>Proxy</th>
+            <th>Source</th>
+            <th class="num">▲ Up</th>
+            <th class="num">▼ Down</th>
+            <th class="num">Age</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="conn-body"></tbody>
+      </table>
+      <div id="conn-empty" class="empty">No active connections.</div>
+    </section>
+
+    <!-- Proxies view -->
+    <section id="view-proxies" class="view">
+      <table id="proxy-table">
+        <thead>
+          <tr><th>Name</th><th>Type</th><th>Address</th><th>Health</th></tr>
+        </thead>
+        <tbody id="proxy-body"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer>
+    <span>proxypool · auto-refresh 1s</span>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

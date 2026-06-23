@@ -1,0 +1,31 @@
+# Binaries (cross-compiled output)
+bin/
+
+# Config files with real credentials (keep only example)
+configs/config.local.yaml
+configs/config.production.yaml
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Go workspace
+go.work
+go.work.sum
+
+# Test artifacts
+*.out
+coverage.txt
+profile.out
+
+# OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+desktop.ini
