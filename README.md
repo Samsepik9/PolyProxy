@@ -1,13 +1,17 @@
 # PolyProxy
 
-> A local HTTP + SOCKS5 proxy with **upstream proxy pool**, **free proxy crawling**, **dynamic rotation**, **auto-pool management**, and a **web dashboard** — written in Go, single static binary, runs on Linux / macOS / Windows.
+> 一个带有**上游代理池**、**免费代理采集**、**动态轮换**、**自动入池管理**和 **Web 仪表盘**的本地 HTTP + SOCKS5 代理 — 用 Go 编写，单静态二进制文件，支持 Linux / macOS / Windows。
 
-Inspired by Clash / Clash Verge's *Connections* panel. PolyProxy gives you a single local port that fans out across N upstream proxies, with a live view of every byte that flows through it. Plus: automatically crawl, validate, and rotate free proxies from public sources.
+灵感来源于 Clash / Clash Verge 的 *Connections* 面板。PolyProxy 给你一个本地端口，将流量分发到 N 个上游代理，并实时展示流经的每一个字节。外加：自动从公开源采集、验证、轮换免费代理。
+
+[**English Documentation**](README_EN.md)
+
+---
 
 ```
 ┌────────────────────────┐      ┌─────────────────────────────┐
-│  Your apps / curl /    │      │     PolyProxy               │
-│  browser / OS proxy    │ ───▶ │  ┌──────────┐  ┌────────┐  │
+│  你的应用 / curl /     │      │     PolyProxy               │
+│  浏览器 / 系统代理     │ ───▶ │  ┌──────────┐  ┌────────┐  │
 │                        │      │  │ HTTP     │  │ Web UI │  │
 │  127.0.0.1:7890 (HTTP) │      │  │ :7890    │  │ :9090  │  │
 │  127.0.0.1:7891 (SOCKS5)│     │  ├──────────┤  └────────┘  │
@@ -16,7 +20,7 @@ Inspired by Clash / Clash Verge's *Connections* panel. PolyProxy gives you a sin
                                 │  └────┬─────┘              │
                                 │       │                    │
                                 │   ┌───▼──────────┐         │
-                                │   │ Proxy pool   │         │
+                                │   │ 代理池       │         │
                                 │   │ random / rr / │         │
                                 │   │ hash / name  │         │
                                 │   └─┬───┬───┬─────┘         │
@@ -30,37 +34,37 @@ Inspired by Clash / Clash Verge's *Connections* panel. PolyProxy gives you a sin
 
 ---
 
-## Features
+## 特性
 
-| Capability | Detail |
+| 能力 | 详情 |
 |---|---|
-| **Local proxy ports** | HTTP (`7890`, both `CONNECT` and plain `GET` forward) + SOCKS5 (`7891`) |
-| **Proxy pool** | Mix `direct`, `http`, `socks5` upstreams freely |
-| **Selection strategies** | `random` (default), `round-robin`, `hash` (sticky per host), `name` (first) |
-| **Per-request pinning** | Proxy-auth username = upstream name → force that upstream for this request |
-| **Connection failover** | Unhealthy upstreams auto-skipped; falls back to next healthy proxy |
-| **Live connections** | Every active tunnel: id, host, target, proxy, source, upload/download bytes, start time, age |
-| **Web dashboard** | Auto-refreshes every 1s, filter by host/target/proxy, close one or all, dark theme, i18n (中/EN) |
-| **Free proxy crawling** | Built-in sources (稻壳代理, 谷德代理, etc.) — one-click fetch from public proxy lists |
-| **Async validation** | Concurrent TCP + HTTP validation with progress tracking |
-| **Dynamic proxy rotation** | Auto crawl → validate on a configurable interval (min 10s) |
-| **Auto-pool** | Automatically add validated proxies to the pool on each cycle |
-| **REST API** | Full API for connections, proxies, pool management, dynamic control |
-| **Cross-platform** | Linux (amd64 / arm64 / armv7), macOS (amd64 / arm64), Windows (amd64 / arm64) — single static binary, zero runtime deps |
-| **Embeddable** | UI assets compiled into the binary via `go:embed` — no filesystem dependencies |
-| **Configurable** | YAML config at a per-user path; CLI flag to override |
-| **Health checks** | Optional background TCP-dial health checks that mark upstreams down |
-| **Low footprint** | ~6 MB binary, ~12 MB RSS for 100 active connections |
+| **本地代理端口** | HTTP（`7890`，支持 `CONNECT` 和普通 `GET` 转发）+ SOCKS5（`7891`） |
+| **代理池** | 自由混合 `direct`、`http`、`socks5` 上游 |
+| **选择策略** | `random`（默认）、`round-robin`、`hash`（按目标主机粘性）、`name`（首个） |
+| **按请求指定** | 代理认证用户名 = 上游名称 → 强制该请求使用指定上游 |
+| **连接故障转移** | 自动跳过不健康上游，回退到下一个可用代理 |
+| **实时连接** | 每个活跃隧道：ID、主机、目标、代理、来源、上传/下载字节数、开始时间、持续时长 |
+| **Web 仪表盘** | 每 1 秒自动刷新，可按主机/目标/代理过滤，关闭单个或全部，深色主题，中/EN 双语 |
+| **免费代理采集** | 内置稻壳代理、谷德代理等公开源 — 一键获取免费代理列表 |
+| **异步验证** | 并发 TCP + HTTP 验证，带进度追踪 |
+| **动态代理轮换** | 按可配置间隔（最低 10s）自动采集→验证循环 |
+| **自动入池** | 每轮验证完成后自动将有效代理加入代理池 |
+| **REST API** | 完整的连接、代理、池管理、动态控制 API |
+| **跨平台** | Linux（amd64 / arm64 / armv7）、macOS（amd64 / arm64）、Windows（amd64 / arm64）— 单静态二进制，零运行时依赖 |
+| **可嵌入** | UI 资源通过 `go:embed` 编译进二进制 — 无文件系统依赖 |
+| **可配置** | 按用户路径的 YAML 配置；可通过 CLI 参数覆盖 |
+| **健康检查** | 可选的后台 TCP 拨号健康检查，标记不可用上游 |
+| **低资源占用** | ~6 MB 二进制，100 个活跃连接时 ~12 MB RSS |
 
 ---
 
-## Quick Start (60 seconds)
+## 快速开始（60 秒）
 
-### Download pre-built binary
+### 下载预构建二进制
 
-Go to [Releases](https://github.com/Samsepik9/PolyProxy/releases) and download the binary for your platform:
+前往 [Releases](https://github.com/Samsepik9/PolyProxy/releases) 下载对应平台的二进制：
 
-| Platform | Binary |
+| 平台 | 二进制文件 |
 |---|---|
 | macOS (Apple Silicon) | `polyproxy-darwin-arm64` |
 | macOS (Intel) | `polyproxy-darwin-amd64` |
@@ -70,44 +74,39 @@ Go to [Releases](https://github.com/Samsepik9/PolyProxy/releases) and download t
 | Windows (x86_64) | `polyproxy-windows-amd64.exe` |
 | Windows (ARM64) | `polyproxy-windows-arm64.exe` |
 
-### Or build from source
+### 或从源码构建
 
 ```bash
 git clone https://github.com/Samsepik9/PolyProxy.git
 cd PolyProxy
-
-# Build for current host
 ./scripts/build.sh
-
-# Or build for all platforms
-./scripts/build.sh all
 ```
 
-### Run
+### 运行
 
 ```bash
-# Start with example config
+# 使用示例配置启动
 ./bin/polyproxy-darwin-arm64 -config configs/config.example.yaml
 
-# Open dashboard
+# 打开仪表盘
 open http://127.0.0.1:9090
 ```
 
-Then in another terminal:
+然后在另一个终端中：
 
 ```bash
-# Use as HTTP proxy
+# 作为 HTTP 代理使用
 curl -x http://127.0.0.1:7890 https://api.ipify.org
 
-# Use as SOCKS5 proxy
+# 作为 SOCKS5 代理使用
 curl --proxy socks5h://127.0.0.1:7891 https://api.ipify.org
 ```
 
 ---
 
-## Configuration
+## 配置
 
-The config file is plain YAML. Full example: [`configs/config.example.yaml`](configs/config.example.yaml).
+配置文件是纯 YAML。完整示例见：[`configs/config.example.yaml`](configs/config.example.yaml)。
 
 ```yaml
 server:
@@ -126,7 +125,7 @@ pool:
       server: 1.2.3.4
       port: 8080
 
-# Free proxy crawling (optional)
+# 免费代理采集（可选）
 freeproxy:
   enabled: true
   test_urls:
@@ -137,9 +136,9 @@ freeproxy:
   concurrency: 50
 ```
 
-### Config paths
+### 配置路径
 
-| OS | Path |
+| 系统 | 路径 |
 |---|---|
 | Linux | `~/.config/PolyProxy/config.yaml` |
 | macOS | `~/Library/Application Support/PolyProxy/config.yaml` |
@@ -147,56 +146,56 @@ freeproxy:
 
 ---
 
-## Web Dashboard
+## Web 仪表盘
 
-Open **`http://127.0.0.1:9090`** in your browser.
+在浏览器中打开 **`http://127.0.0.1:9090`**。
 
-### Tabs
+### 标签页
 
-- **连接 (Connections)** — live tunnels, filterable, closable one-by-one or all-at-once
-- **代理采集 (Proxy Crawl)** — fetch free proxies from public sources, validate them, add to pool
-- **代理池 (Proxy Pool)** — view/manage upstreams, switch strategies, save config
-- **运行日志 (Logs)** — real-time operation logs
+- **连接** — 实时隧道列表，可过滤、逐个关闭或一键全部关闭
+- **代理采集** — 从公开源获取免费代理、验证、加入代理池
+- **代理池** — 查看/管理上游代理、切换策略、保存配置
+- **运行日志** — 实时操作日志
 
-### Proxy Crawl tab features
+### 代理采集功能
 
-| Button | What it does |
+| 按钮 | 功能 |
 |---|---|
-| 🔍 获取代理 | Fetch proxies from all built-in sources |
-| ✅ 验证代理 | Validate fetched proxies (concurrent, with progress) |
-| 🔄 动态代理 | Start/stop periodic crawl→validate cycle (configurable interval) |
-| 🤖 自动入池 | Toggle auto-add: when ON, each dynamic cycle auto-adds valid proxies to pool |
-| 📥 移入代理池 | Manually add selected proxies to the pool |
+| 🔍 获取代理 | 从所有内置源采集代理 |
+| ✅ 验证代理 | 并发验证已采集的代理（带进度条） |
+| 🔄 动态代理 | 启动/停止定时采集→验证循环（可配置间隔） |
+| 🤖 自动入池 | 开关：开启后每轮动态循环自动将有效代理加入代理池 |
+| 📥 移入代理池 | 手动将勾选的代理加入代理池 |
 
-### Priority display
+### 优先展示
 
-Proxies from **稻壳代理 (docip)** and **谷德代理 (goodips)** are displayed first. Results are paginated at 50 per page with smart page navigation.
+**稻壳代理 (docip)** 和 **谷德代理 (goodips)** 来源的代理优先显示。结果每页 50 条，支持智能翻页。
 
 ---
 
-## Selection Strategies
+## 选择策略
 
-| Strategy | Behavior | Best for |
+| 策略 | 行为 | 最适合 |
 |---|---|---|
-| `random` | Uniform random among healthy upstreams | Spreading load, evading per-IP rate limits |
-| `round-robin` | Cycle through upstreams in order | Even distribution |
-| `hash` | `FNV32a(host) % len(pool)` — sticky per destination host | Keeping sessions on same egress IP |
-| `name` | Always the first healthy upstream | Debugging, "always use my private proxy" |
+| `random` | 在健康上游中均匀随机选择 | 分散负载，规避按 IP 的速率限制 |
+| `round-robin` | 按顺序循环上游 | 均匀分配 |
+| `hash` | `FNV32a(host) % len(pool)` — 按目标主机粘性 | 保持会话在同一出口 IP |
+| `name` | 始终使用第一个健康上游 | 调试，"始终使用我的私有代理" |
 
 ---
 
-## Per-Request Pinning
+## 按请求指定上游
 
-Encode the upstream name as the proxy-auth username:
+将上游名称编码为代理认证用户名：
 
 ```bash
-# Force "us-1"
+# 强制使用 "us-1"
 curl -x http://us-1:any@127.0.0.1:7890 https://api.ipify.org
 
-# Force "direct" (bypass all upstreams)
+# 强制 "direct"（绕过所有上游）
 curl -x http://direct:any@127.0.0.1:7890 https://api.ipify.org
 
-# SOCKS5 variant
+# SOCKS5 变体
 curl --proxy-user 'jp-1:any' --proxy socks5h://127.0.0.1:7891 https://api.ipify.org
 ```
 
@@ -204,69 +203,69 @@ curl --proxy-user 'jp-1:any' --proxy socks5h://127.0.0.1:7891 https://api.ipify.
 
 ## REST API
 
-| Method | Path | Description |
+| 方法 | 路径 | 描述 |
 |---|---|---|
-| `GET` | `/api/healthz` | Liveness probe |
-| `GET` | `/api/connections` | Active connections snapshot |
-| `DELETE` | `/api/connections` | Close all connections |
-| `DELETE` | `/api/connections/:id` | Close one connection |
-| `GET` | `/api/proxies` | Upstream list with health |
-| `DELETE` | `/api/proxies/:name` | Remove proxy from pool |
-| `GET` | `/api/stats` | Aggregate counters |
-| `POST` | `/api/proxies/fetch` | Crawl free proxies |
-| `POST` | `/api/proxies/validate` | Validate cached proxies |
-| `GET` | `/api/proxies/validate/:id` | Validation progress |
-| `POST` | `/api/proxies/dynamic` | Start/stop dynamic cycle |
-| `GET` | `/api/proxies/dynamic` | Dynamic cycle status |
-| `POST` | `/api/proxies/auto-pool` | Toggle auto-pool |
-| `POST` | `/api/pool/add` | Add proxies to pool |
-| `PUT` | `/api/pool/strategy` | Change selection strategy |
-| `POST` | `/api/pool/save` | Save pool to config file |
-| `GET` | `/api/logs` | Operation logs |
+| `GET` | `/api/healthz` | 存活探针 |
+| `GET` | `/api/connections` | 活跃连接快照 |
+| `DELETE` | `/api/connections` | 关闭所有连接 |
+| `DELETE` | `/api/connections/:id` | 关闭单个连接 |
+| `GET` | `/api/proxies` | 上游列表及健康状态 |
+| `DELETE` | `/api/proxies/:name` | 从池中移除代理 |
+| `GET` | `/api/stats` | 聚合计数器 |
+| `POST` | `/api/proxies/fetch` | 采集免费代理 |
+| `POST` | `/api/proxies/validate` | 验证已缓存的代理 |
+| `GET` | `/api/proxies/validate/:id` | 验证进度 |
+| `POST` | `/api/proxies/dynamic` | 启动/停止动态循环 |
+| `GET` | `/api/proxies/dynamic` | 动态循环状态 |
+| `POST` | `/api/proxies/auto-pool` | 切换自动入池 |
+| `POST` | `/api/pool/add` | 添加代理到池 |
+| `PUT` | `/api/pool/strategy` | 更改选择策略 |
+| `POST` | `/api/pool/save` | 保存池到配置文件 |
+| `GET` | `/api/logs` | 操作日志 |
 
 ---
 
-## Project Layout
+## 项目结构
 
 ```
 .
-├── cmd/proxypool/          # Entry point
+├── cmd/proxypool/          # 入口
 ├── internal/
-│   ├── api/                # REST API + dynamic runner
-│   ├── config/             # YAML config loading
-│   ├── conntrack/          # Connection tracking
-│   ├── freeproxy/          # Free proxy crawling & validation
-│   ├── pool/               # Upstream pool + health check
-│   ├── proxy/              # HTTP/SOCKS5 proxy servers + failover
-│   └── web/                # Embedded web dashboard
-├── configs/                # Example configs
-├── scripts/                # Build & launch scripts
-└── .github/workflows/      # CI (3 OS) + Release (7 platforms)
+│   ├── api/                # REST API + 动态运行器
+│   ├── config/             # YAML 配置加载
+│   ├── conntrack/          # 连接追踪
+│   ├── freeproxy/          # 免费代理采集与验证
+│   ├── pool/               # 上游代理池 + 健康检查
+│   ├── proxy/              # HTTP/SOCKS5 代理服务器 + 故障转移
+│   └── web/                # 嵌入式 Web 仪表盘
+├── configs/                # 示例配置
+├── scripts/                # 构建与启动脚本
+└── .github/workflows/      # CI（3 系统）+ Release（7 平台）
 ```
 
 ---
 
-## Development
+## 开发
 
 ```bash
-# Prerequisites: Go 1.24+
+# 前置条件：Go 1.24+
 
-# Build
+# 构建
 go build -o bin/polyproxy ./cmd/proxypool
 
-# Run tests
+# 运行测试
 go test ./... -v
 
-# Cross-compile all platforms
+# 交叉编译所有平台
 ./scripts/build.sh all
 ```
 
 ---
 
-## License
+## 许可证
 
-MIT — see [LICENSE](LICENSE).
+MIT — 详见 [LICENSE](LICENSE)。
 
 ---
 
-[中文文档](README.zh-CN.md)
+[English Documentation](README_EN.md)
