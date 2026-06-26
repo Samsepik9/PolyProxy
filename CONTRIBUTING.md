@@ -1,4 +1,4 @@
-# Contributing to ProxyPool
+# Contributing to PolyProxy
 
 Thanks for your interest in contributing! This project is small and focused — contributions are welcome but should follow these guidelines.
 
@@ -15,8 +15,8 @@ Thanks for your interest in contributing! This project is small and focused — 
 
 ```bash
 # Clone
-git clone https://github.com/jeff/proxypool.git
-cd proxypool
+git clone https://github.com/Samsepik9/PolyProxy.git
+cd PolyProxy
 
 # Build for your host
 ./scripts/build.sh
@@ -24,8 +24,7 @@ cd proxypool
 # Run from source
 go run ./cmd/proxypool -config configs/config.example.yaml
 
-# Run tests (requires Python 3 for echo servers)
-python3 scripts/test_echo_servers.py &
+# Run tests
 go test ./...
 ```
 
@@ -52,7 +51,7 @@ Types: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`
 
 ## Reporting Issues
 
-- Include OS, architecture, and proxypool version (`proxypool -version`)
+- Include OS, architecture, and polyproxy version (`polyproxy -version`)
 - Include your config (redact credentials!)
 - Include relevant log output
 - If it's a crash, include the full stack trace

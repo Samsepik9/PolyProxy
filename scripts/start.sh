@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# start.sh — launch proxypool on Linux / macOS.
+# start.sh — launch PolyProxy on Linux / macOS.
 # Usage: ./scripts/start.sh [--config PATH]
 
 set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}"")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Pick a binary: pre-built in ./bin matching host, otherwise `go run`.
@@ -14,14 +14,14 @@ case "$HOST_ARCH" in
   aarch64) HOST_ARCH=arm64 ;;
   armv7l)  HOST_ARCH=arm   ;;
 esac
-BIN="$ROOT/bin/proxypool-${HOST_OS}-${HOST_ARCH}"
+BIN="$ROOT/bin/polyproxy-${HOST_OS}-${HOST_ARCH}"
 
-# Parse args (forward everything to proxypool)
+# Parse args (forward everything to polyproxy)
 ARGS=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --help|-h)
-      echo "Usage: $0 [--config PATH] [extra proxypool args...]"
+      echo "Usage: $0 [--config PATH] [extra polyproxy args...]"
       echo ""
       echo "Defaults config to the per-user path; creates it from"
       echo "  $ROOT/configs/config.example.yaml if missing."
@@ -35,8 +35,8 @@ done
 NEEDS_CONFIG=1
 for a in "${ARGS[@]:-}"; do [ "$a" = "-config" ] && NEEDS_CONFIG=0; done
 if [ "$NEEDS_CONFIG" = "1" ]; then
-  CFG_PATH="$HOME/.config/proxypool/config.yaml"
-  [ "$(uname -s)" = "Darwin" ] && CFG_PATH="$HOME/Library/Application Support/proxypool/config.yaml"
+  CFG_PATH="$HOME/.config/PolyProxy/config.yaml"
+  [ "$(uname -s)" = "Darwin" ] && CFG_PATH="$HOME/Library/Application Support/PolyProxy/config.yaml"
   if [ ! -f "$CFG_PATH" ]; then
     mkdir -p "$(dirname "$CFG_PATH")"
     cp "$ROOT/configs/config.example.yaml" "$CFG_PATH"
