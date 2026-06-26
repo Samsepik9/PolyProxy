@@ -17,7 +17,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jeff/proxypool/internal/pool"
+	"github.com/Samsepik9/PolyProxy/internal/pool"
 )
 
 // Dialer dials through the chosen upstream.

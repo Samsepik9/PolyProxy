@@ -1,6 +1,9 @@
 // Command proxypool runs a local HTTP + SOCKS5 proxy that forwards traffic
 // through a configurable pool of upstream proxies. A web dashboard shows live
 // connections, traffic counters, and per-proxy health.
+//
+// PolyProxy — multi-protocol proxy pool with web dashboard, free proxy crawling,
+// dynamic proxy rotation, and automatic pool management.
 package main
 
 import (
@@ -10,17 +13,20 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
-	"github.com/jeff/proxypool/internal/api"
-	"github.com/jeff/proxypool/internal/config"
-	"github.com/jeff/proxypool/internal/conntrack"
-	"github.com/jeff/proxypool/internal/pool"
-	"github.com/jeff/proxypool/internal/proxy"
+	"github.com/Samsepik9/PolyProxy/internal/api"
+	"github.com/Samsepik9/PolyProxy/internal/config"
+	"github.com/Samsepik9/PolyProxy/internal/conntrack"
+	"github.com/Samsepik9/PolyProxy/internal/freeproxy"
+	"github.com/Samsepik9/PolyProxy/internal/pool"
+	"github.com/Samsepik9/PolyProxy/internal/proxy"
 )
 
-const version = "0.1.0"
+const version = "0.2.0"
 
 func main() {
 	var (
@@ -42,6 +48,18 @@ func main() {
 	cfg, err := config.Load(cfgPath)
 	if err != nil {
 		log.Fatalf("config error: %v", err)
+	}
+
+	// Logger
+	logDir := cfg.FreeProxy.LogDir
+	if logDir == "" {
+		logDir = filepath.Join(filepath.Dir(cfgPath), "logs")
+	}
+	freeproxy.InitLogger(logDir, 500)
+	defer freeproxy.GetLogger().Close()
+
+	if l := freeproxy.GetLogger(); l != nil {
+		l.Info("main", "proxypool %s starting", version)
 	}
 
 	// Pool
@@ -78,13 +96,23 @@ func main() {
 		}()
 	}
 	if cfg.Server.APIEnable && cfg.Server.APIListen != "" {
-		apiSrv := &api.Server{Cm: cm, Pool: p}
+		apiSrv := &api.Server{Cm: cm, Pool: p, FreeCfg: &cfg.FreeProxy, CfgPath: cfgPath}
+		apiMux := apiSrv.Handler()
+		webHandler := api.WebHandler()
 		go func() {
 			addr := cfg.Server.APIListen
 			log.Printf("[api]    dashboard on http://%s", addr)
+			// Wrap: API routes first, fall back to web UI
+			wrapper := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if strings.HasPrefix(r.URL.Path, "/api/") {
+					apiMux.ServeHTTP(w, r)
+					return
+				}
+				webHandler.ServeHTTP(w, r)
+			})
 			srv := &http.Server{
 				Addr:              addr,
-				Handler:           apiSrv.Handler(),
+				Handler:           wrapper,
 				ReadHeaderTimeout: 5 * time.Second,
 			}
 			go func() {

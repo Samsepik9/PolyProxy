@@ -1,9 +1,9 @@
-# ProxyPool example configuration.
-# Copy to the per-user config path (printed by `proxypool -h`) and edit.
+# PolyProxy example configuration.
+# Copy to the per-user config path (printed by `polyproxy -h`) and edit.
 #
-#   Linux   : ~/.config/proxypool/config.yaml
-#   macOS   : ~/Library/Application Support/proxypool/config.yaml
-#   Windows : %APPDATA%\proxypool\config.yaml
+#   Linux   : ~/.config/PolyProxy/config.yaml
+#   macOS   : ~/Library/Application Support/PolyProxy/config.yaml
+#   Windows : %APPDATA%\PolyProxy\config.yaml
 #
 # Strategy cheat sheet:
 #   random       — uniform random among healthy upstreams
@@ -19,7 +19,7 @@ server:
 
 pool:
   strategy:     random
-  health_check: false  # set true to periodically TCP-dial every upstream
+  health_check: true   # periodic TCP-dial every upstream, auto-mark dead ones unhealthy
 
   proxies:
     # 0. The "direct" pseudo-proxy — dials the destination itself.
@@ -45,3 +45,17 @@ pool:
       server: "9.10.11.12"
       port: 1080
       # username / password are forwarded to the SOCKS5 server if provided
+
+# Free proxy crawling & validation (optional)
+freeproxy:
+  enabled: true
+  # Test URLs tried in order; proxy is valid if any returns 2xx-3xx.
+  # Use China-friendly endpoints — scraped free proxies are usually
+  # hosted in China and can't reliably reach US test services like httpbin.org.
+  test_urls:
+    - "http://myip.ipip.net"   # ~130ms, returns just the IP
+    - "http://www.baidu.com"   # ~190ms, always 200
+    - "http://cip.cc"          # ~4s, reliable fallback
+  crawl_timeout: 30               # seconds for fetching from proxy sources (international sources are slow)
+  timeout: 8                     # seconds for TCP probe + each test URL attempt
+  concurrency: 50                # max parallel validations

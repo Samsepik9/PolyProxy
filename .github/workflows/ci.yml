@@ -24,8 +24,8 @@ jobs:
         run: go vet ./...
 
       - name: Build
-        run: go build -trimpath -o /tmp/proxypool-test ./cmd/proxypool
+        run: go build -trimpath -o /tmp/polyproxy-test ./cmd/proxypool
 
       - name: Test
         run: go test ./... -v -count=1
-        continue-on-error: true  # e2e tests may need echo servers
+        continue-on-error: true

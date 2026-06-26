@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="utf-8" />
-  <title>ProxyPool · Connections</title>
+  <title>ProxyPool</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="/static/style.css" />
 </head>
@@ -10,59 +10,128 @@
   <header>
     <div class="brand">⚡ ProxyPool</div>
     <nav>
-      <button class="tab active" data-tab="connections">Connections</button>
-      <button class="tab" data-tab="proxies">Proxies</button>
+      <button class="tab active" data-tab="connections" data-i18n="tab.connections">连接</button>
+      <button class="tab" data-tab="crawl" data-i18n="tab.crawl">代理采集</button>
+      <button class="tab" data-tab="pool" data-i18n="tab.pool">代理池</button>
+      <button class="tab" data-tab="logs" data-i18n="tab.logs">运行日志</button>
     </nav>
     <div class="stats">
-      <span class="stat"><b id="stat-active">0</b> active</span>
+      <span class="stat"><b id="stat-active">0</b> <span data-i18n="stat.active">active</span></span>
       <span class="stat up">▲ <b id="stat-up">0 B</b></span>
       <span class="stat down">▼ <b id="stat-down">0 B</b></span>
-      <span class="stat">strategy: <b id="stat-strategy">–</b></span>
+      <span class="stat"><span data-i18n="stat.strategy">strategy</span>: <b id="stat-strategy">–</b></span>
     </div>
+    <button id="lang-toggle" class="lang-btn">中/EN</button>
   </header>
 
   <main>
-    <!-- Connections view -->
+    <!-- Connections -->
     <section id="view-connections" class="view active">
       <div class="toolbar">
         <input id="filter" placeholder="Filter by host / target / proxy…" />
-        <button id="close-all" class="danger">Close All</button>
+        <button id="close-all" class="danger" data-i18n="conn.closeAll">Close All</button>
       </div>
       <table id="conn-table">
         <thead>
           <tr>
-            <th>Start</th>
-            <th>Type</th>
-            <th>Host</th>
-            <th>Target</th>
-            <th>Proxy</th>
-            <th>Source</th>
-            <th class="num">▲ Up</th>
-            <th class="num">▼ Down</th>
-            <th class="num">Age</th>
+            <th data-i18n="conn.start">Start</th>
+            <th data-i18n="conn.type">Type</th>
+            <th data-i18n="conn.host">Host</th>
+            <th data-i18n="conn.target">Target</th>
+            <th data-i18n="conn.proxy">Proxy</th>
+            <th data-i18n="conn.source">Source</th>
+            <th class="num" data-i18n="conn.up">▲ Up</th>
+            <th class="num" data-i18n="conn.down">▼ Down</th>
+            <th class="num" data-i18n="conn.age">Age</th>
             <th></th>
           </tr>
         </thead>
         <tbody id="conn-body"></tbody>
       </table>
-      <div id="conn-empty" class="empty">No active connections.</div>
+      <div id="conn-empty" class="empty" data-i18n="conn.empty">No active connections.</div>
     </section>
 
-    <!-- Proxies view -->
-    <section id="view-proxies" class="view">
-      <table id="proxy-table">
+    <!-- 代理采集 -->
+    <section id="view-crawl" class="view">
+      <div class="toolbar">
+        <button id="fetch-proxies" class="action" data-i18n="crawl.fetch">🔍 获取代理</button>
+        <button id="dynamic-proxy" class="action" data-i18n="crawl.dynamic">🔄 动态代理</button>
+        <input id="dynamic-interval" type="number" min="10" value="60" class="interval-input" title="间隔秒数" />
+        <span class="interval-label" data-i18n="crawl.intervalSec">秒</span>
+        <button id="validate-proxies" class="action" data-i18n="crawl.validate">✅ 验证代理</button>
+        <button id="add-selected" class="action" data-i18n="crawl.addToPool">📥 移入代理池</button>
+        <button id="auto-pool" class="action" data-i18n="crawl.autoPoolOff">🤖 自动入池</button>
+        <span id="crawl-status" class="status"></span>
+      </div>
+      <div id="crawl-progress" class="progress-bar" style="display:none">
+        <div class="progress-fill"></div>
+        <span class="progress-text"></span>
+      </div>
+      <div id="crawl-summary" class="summary"></div>
+      <table id="crawl-table" style="display:none">
         <thead>
-          <tr><th>Name</th><th>Type</th><th>Address</th><th>Health</th></tr>
+          <tr>
+            <th><input type="checkbox" id="crawl-select-all" /></th>
+            <th data-i18n="crawl.addr">地址</th>
+            <th data-i18n="crawl.type">类型</th>
+            <th data-i18n="crawl.source">来源</th>
+            <th class="num" data-i18n="crawl.latency">延迟</th>
+          </tr>
         </thead>
-        <tbody id="proxy-body"></tbody>
+        <tbody id="crawl-body"></tbody>
       </table>
+      <div id="crawl-empty" class="empty" data-i18n="crawl.empty">点击「获取代理」开始采集</div>
+    </section>
+
+    <!-- 代理池 -->
+    <section id="view-pool" class="view">
+      <div class="toolbar">
+        <label data-i18n="pool.strategy">策略:</label>
+        <select id="pool-strategy">
+          <option value="random" data-i18n="pool.random">随机</option>
+          <option value="round-robin" data-i18n="pool.roundRobin">轮询</option>
+          <option value="hash" data-i18n="pool.hash">哈希</option>
+          <option value="name" data-i18n="pool.name">指定</option>
+        </select>
+        <select id="pool-specific" style="display:none"></select>
+        <button id="pool-save" class="action" data-i18n="pool.save">💾 保存到配置</button>
+        <span id="pool-status" class="status"></span>
+      </div>
+      <table id="pool-table">
+        <thead>
+          <tr>
+            <th data-i18n="pool.colName">名称</th>
+            <th data-i18n="pool.colType">类型</th>
+            <th data-i18n="pool.colAddr">地址</th>
+            <th data-i18n="pool.colHealth">健康</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="pool-body"></tbody>
+      </table>
+    </section>
+
+    <!-- 运行日志 -->
+    <section id="view-logs" class="view">
+      <div class="toolbar">
+        <select id="log-level">
+          <option value="" data-i18n="logs.all">全部</option>
+          <option value="info" data-i18n="logs.info">Info</option>
+          <option value="warn" data-i18n="logs.warn">Warn</option>
+          <option value="error" data-i18n="logs.error">Error</option>
+        </select>
+        <button id="logs-refresh" class="action" data-i18n="logs.refresh">🔄 刷新</button>
+        <button id="logs-clear" class="action" data-i18n="logs.clear">🗑 清空</button>
+      </div>
+      <div id="log-container" class="log-container"></div>
     </section>
   </main>
 
   <footer>
-    <span>proxypool · auto-refresh 1s</span>
+    <span>proxypool v0.2 · auto-refresh 1s</span>
   </footer>
 
+  <script src="/static/i18n.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>

@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jeff/proxypool/internal/conntrack"
-	"github.com/jeff/proxypool/internal/pool"
+	"github.com/Samsepik9/PolyProxy/internal/conntrack"
+	"github.com/Samsepik9/PolyProxy/internal/pool"
 )
 
 // SOCKS5Server is a local SOCKS5 proxy that forwards through the upstream pool.
@@ -182,13 +182,6 @@ func (s *SOCKS5Server) handle(client net.Conn) {
 	}
 	port := uint16(portB[0])<<8 | uint16(portB[1])
 
-	up, err := s.Pool.Select(preferred, host)
-	if err != nil {
-		log.Printf("[socks5] pool select: %v", err)
-		_, _ = client.Write([]byte{0x05, 0x01, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
-		return
-	}
-
 	entry := &conntrack.Entry{
 		ID:         newID(),
 		StartTime:  time.Now(),
@@ -197,7 +190,6 @@ func (s *SOCKS5Server) handle(client net.Conn) {
 		Source:     client.RemoteAddr().String(),
 		Host:       host,
 		Target:     net.JoinHostPort(host, strconv.Itoa(int(port))),
-		Proxy:      up.Name,
 	}
 	s.Cm.Register(entry)
 	defer s.Cm.Unregister(entry.ID)
@@ -206,12 +198,13 @@ func (s *SOCKS5Server) handle(client net.Conn) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	upstream, err := s.Dialer.Dial(ctx, up, host, port)
+	upstream, proxyName, err := dialWithFailover(ctx, s.Pool, s.Dialer, preferred, host, uint16(port))
 	if err != nil {
-		log.Printf("[socks5] dial upstream %s: %v", up.Name, err)
+		log.Printf("[socks5] all proxies failed for %s: %v", host, err)
 		_, _ = client.Write([]byte{0x05, 0x05, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
 		return
 	}
+	entry.Proxy = proxyName
 	defer safeClose(upstream)
 
 	// Success reply: bind to 0.0.0.0:0

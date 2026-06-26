@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# build.sh — cross-compile proxypool for common OS / arch pairs.
+# build.sh — cross-compile PolyProxy for common OS / arch pairs.
 # Usage:  ./scripts/build.sh            # builds for host
 #         ./scripts/build.sh all        # builds for host + linux/amd64, linux/arm64, windows/amd64, darwin/arm64
 
@@ -16,7 +16,7 @@ build_one() {
   local goos="$1" goarch="$2"
   local ext=""
   [ "$goos" = "windows" ] && ext=".exe"
-  local out="$OUT/proxypool-${goos}-${goarch}${ext}"
+  local out="$OUT/polyproxy-${goos}-${goarch}${ext}"
   echo "→ building $goos/$goarch"
   ( cd "$ROOT" && GOOS="$goos" GOARCH="$goarch" CGO_ENABLED=0 \
       go build -trimpath -ldflags "$LDFLAGS" -o "$out" ./cmd/proxypool )

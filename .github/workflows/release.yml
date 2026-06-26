@@ -48,14 +48,14 @@ jobs:
           VERSION=${GITHUB_REF_NAME:-dev}
           go build -trimpath \
             -ldflags "-s -w -X main.version=$VERSION" \
-            -o proxypool-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} \
+            -o polyproxy-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} \
             ./cmd/proxypool
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: proxypool-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: proxypool-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+          name: polyproxy-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: polyproxy-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
 
   release:
     needs: build

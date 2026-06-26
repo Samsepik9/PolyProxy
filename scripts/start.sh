@@ -43,7 +43,7 @@ if [ "$NEEDS_CONFIG" = "1" ]; then
     echo "▸ bootstrapped config at $CFG_PATH — edit and re-run."
     exit 0
   fi
-  ARGS=("-config" "$CFG_PATH" "${ARGS[@]}")
+  ARGS=("-config" "$CFG_PATH" "${ARGS[@]:-}")
 fi
 
 if [ -x "$BIN" ]; then

@@ -1,10 +1,10 @@
-// Package proxy — http.go: minimal HTTP proxy server (CONNECT tunnel + plain HTTP forward).
 package proxy
 
 import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jeff/proxypool/internal/conntrack"
-	"github.com/jeff/proxypool/internal/pool"
+	"github.com/Samsepik9/PolyProxy/internal/conntrack"
+	"github.com/Samsepik9/PolyProxy/internal/pool"
 )
 
 // HTTPServer is a local HTTP proxy. It accepts:
@@ -47,6 +47,57 @@ func (s *HTTPServer) ListenAndServe(ctx context.Context, addr string) error {
 	}
 }
 
+// dialWithFailover tries to connect through proxies in sequence.
+// If preferred is set (user-specified proxy), only that proxy is tried.
+// Otherwise it attempts each healthy proxy until one succeeds.
+func dialWithFailover(ctx context.Context, p *pool.Pool, d *Dialer, preferred, host string, port uint16) (net.Conn, string, error) {
+	if preferred != "" {
+		// User specified a specific proxy — no failover, respect the choice
+		up, err := p.Select(preferred, host)
+		if err != nil {
+			return nil, "", fmt.Errorf("pool select %q: %w", preferred, err)
+		}
+		conn, err := d.Dial(ctx, up, host, port)
+		if err != nil {
+			return nil, up.Name, fmt.Errorf("dial %s (%s): %w", up.Name, up.Addr, err)
+		}
+		return conn, up.Name, nil
+	}
+
+	// No preferred proxy — try each healthy upstream in strategy order.
+	attempted := map[string]bool{}
+	lastErr := errors.New("no healthy proxies available")
+	for attempts := 0; attempts < len(p.List())*2; attempts++ {
+		up, err := p.Select("", host)
+		if err != nil {
+			return nil, "", err
+		}
+		if attempted[up.Name] {
+			continue
+		}
+		attempted[up.Name] = true
+		if up.Type == "direct" {
+			conn, err := d.Dial(ctx, up, host, port)
+			if err == nil {
+				return conn, up.Name, nil
+			}
+			lastErr = fmt.Errorf("direct dial: %w", err)
+			continue
+		}
+		if !up.Healthy() {
+			lastErr = fmt.Errorf("proxy %s (%s) marked unhealthy", up.Name, up.Addr)
+			continue
+		}
+		conn, err := d.Dial(ctx, up, host, port)
+		if err == nil {
+			return conn, up.Name, nil
+		}
+		log.Printf("[proxy] proxy %s (%s) failed: %v, trying next", up.Name, up.Addr, err)
+		lastErr = fmt.Errorf("dial %s (%s): %w", up.Name, up.Addr, err)
+	}
+	return nil, "", lastErr
+}
+
 func (s *HTTPServer) handle(client net.Conn) {
 	defer safeClose(client)
 	_ = client.SetReadDeadline(time.Now().Add(30 * time.Second))
@@ -76,13 +127,6 @@ func (s *HTTPServer) handleConnect(client net.Conn, req *http.Request, preferred
 	host, portStr := splitHostPort(req.Host)
 	port := parsePort(portStr, 443)
 
-	up, err := s.Pool.Select(preferred, host)
-	if err != nil {
-		log.Printf("[http] pool select: %v", err)
-		_, _ = client.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
-		return
-	}
-
 	entry := &conntrack.Entry{
 		ID:         newID(),
 		StartTime:  time.Now(),
@@ -91,7 +135,6 @@ func (s *HTTPServer) handleConnect(client net.Conn, req *http.Request, preferred
 		Source:     client.RemoteAddr().String(),
 		Host:       host,
 		Target:     joinedHost(host, uint16(port)),
-		Proxy:      up.Name,
 	}
 	s.Cm.Register(entry)
 	defer s.Cm.Unregister(entry.ID)
@@ -100,12 +143,13 @@ func (s *HTTPServer) handleConnect(client net.Conn, req *http.Request, preferred
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	upstream, err := s.Dialer.Dial(ctx, up, host, uint16(port))
+	upstream, proxyName, err := dialWithFailover(ctx, s.Pool, s.Dialer, preferred, host, uint16(port))
 	if err != nil {
-		log.Printf("[http] dial upstream %s: %v", up.Name, err)
+		log.Printf("[http] all proxies failed for %s: %v", host, err)
 		_, _ = client.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
 		return
 	}
+	entry.Proxy = proxyName
 	defer safeClose(upstream)
 
 	if _, err := client.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n")); err != nil {
@@ -118,13 +162,6 @@ func (s *HTTPServer) handleForward(client net.Conn, br *bufio.Reader, req *http.
 	host := req.URL.Hostname()
 	port := parsePort(req.URL.Port(), 80)
 
-	up, err := s.Pool.Select(preferred, host)
-	if err != nil {
-		log.Printf("[http] pool select: %v", err)
-		_, _ = client.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
-		return
-	}
-
 	entry := &conntrack.Entry{
 		ID:         newID(),
 		StartTime:  time.Now(),
@@ -133,7 +170,6 @@ func (s *HTTPServer) handleForward(client net.Conn, br *bufio.Reader, req *http.
 		Source:     client.RemoteAddr().String(),
 		Host:       host,
 		Target:     joinedHost(host, uint16(port)),
-		Proxy:      up.Name,
 	}
 	s.Cm.Register(entry)
 	defer s.Cm.Unregister(entry.ID)
@@ -142,12 +178,13 @@ func (s *HTTPServer) handleForward(client net.Conn, br *bufio.Reader, req *http.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	upstream, err := s.Dialer.Dial(ctx, up, host, uint16(port))
+	upstream, proxyName, err := dialWithFailover(ctx, s.Pool, s.Dialer, preferred, host, uint16(port))
 	if err != nil {
-		log.Printf("[http] dial upstream %s: %v", up.Name, err)
+		log.Printf("[http] all proxies failed for %s: %v", host, err)
 		_, _ = client.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
 		return
 	}
+	entry.Proxy = proxyName
 	defer safeClose(upstream)
 
 	// Forward the original request via the upstream.

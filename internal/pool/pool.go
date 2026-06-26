@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/jeff/proxypool/internal/config"
+	"github.com/Samsepik9/PolyProxy/internal/config"
 )
 
 // Upstream is a normalised upstream proxy ready to dial.
@@ -38,6 +38,7 @@ type Pool struct {
 	all      []*Upstream
 	byName   map[string]*Upstream
 	strategy string
+	pinned   string // pinned upstream name when strategy == "name"
 
 	// round-robin state
 	rrCounter atomic.Uint64
@@ -82,6 +83,66 @@ func (p *Pool) List() []*Upstream {
 	return out
 }
 
+// Add adds a new upstream to the pool dynamically. Returns an error if the name
+// already exists.
+func (p *Pool) Add(u *Upstream) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if _, ok := p.byName[u.Name]; ok {
+		return fmt.Errorf("proxy %q already exists in pool", u.Name)
+	}
+	u.SetHealthy(true)
+	p.all = append(p.all, u)
+	p.byName[u.Name] = u
+	return nil
+}
+
+// Remove removes an upstream from the pool by name. Returns false if not found.
+func (p *Pool) Remove(name string) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	u, ok := p.byName[name]
+	if !ok {
+		return false
+	}
+	delete(p.byName, name)
+	for i, v := range p.all {
+		if v == u {
+			p.all = append(p.all[:i], p.all[i+1:]...)
+			break
+		}
+	}
+	return true
+}
+
+// SetStrategy changes the selection strategy at runtime.
+func (p *Pool) SetStrategy(s string) error {
+	switch s {
+	case "random", "round-robin", "hash", "name":
+	default:
+		return fmt.Errorf("unknown strategy %q (random|round-robin|hash|name)", s)
+	}
+	p.mu.Lock()
+	p.strategy = s
+	p.mu.Unlock()
+	return nil
+}
+
+// PinnedName returns the currently pinned upstream name (used when strategy == "name").
+func (p *Pool) PinnedName() string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.pinned
+}
+
+// SetPinnedName sets the upstream name to use when strategy == "name".
+// Pass an empty string to clear the pin.
+func (p *Pool) SetPinnedName(name string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.pinned = name
+}
+
 // Snapshot returns a JSON-safe view of all upstreams.
 func (p *Pool) Snapshot() []UpstreamView {
 	ups := p.List()
@@ -122,7 +183,7 @@ func (p *Pool) Get(name string) (*Upstream, bool) {
 //   - random      : uniform random among healthy upstreams
 //   - round-robin : cyclical
 //   - hash        : hash(key) -> index, sticky to the same upstream per key
-//   - name        : falls back to first healthy
+//   - name        : uses the pool's pinned name (if set), else falls back to first healthy
 //
 // Falls back to the first upstream if no healthy candidates remain.
 func (p *Pool) Select(preferredName, key string) (*Upstream, error) {
@@ -132,11 +193,17 @@ func (p *Pool) Select(preferredName, key string) (*Upstream, error) {
 		return nil, errors.New("proxy pool is empty")
 	}
 
-	if preferredName != "" {
-		if u, ok := p.byName[preferredName]; ok {
+	// Effective preferred name: explicit preferred (from URL auth) OR pinned (from "name" strategy)
+	effective := preferredName
+	if effective == "" && p.strategy == "name" && p.pinned != "" {
+		effective = p.pinned
+	}
+
+	if effective != "" {
+		if u, ok := p.byName[effective]; ok {
 			return u, nil
 		}
-		return nil, fmt.Errorf("proxy %q not found in pool", preferredName)
+		return nil, fmt.Errorf("pinned proxy %q not found in pool", effective)
 	}
 
 	healthy := make([]*Upstream, 0, len(p.all))

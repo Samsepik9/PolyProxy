@@ -35,10 +35,22 @@ type PoolConfig struct {
 	Proxies     []ProxyEntry  `yaml:"proxies"`
 }
 
+// FreeProxyConfig controls free proxy crawling and validation.
+type FreeProxyConfig struct {
+	Enabled      bool     `yaml:"enabled"`       // enable free proxy features
+	TestURLs     []string `yaml:"test_urls"`     // URLs tried in order; proxy is valid if any returns 2xx-3xx
+	CrawlTimeout int      `yaml:"crawl_timeout"` // seconds for fetching from proxy sources (often international)
+	Timeout      int      `yaml:"timeout"`       // seconds for TCP probe + each test URL attempt
+	Concurrency  int      `yaml:"concurrency"`   // max concurrent validation goroutines
+	LogDir       string   `yaml:"log_dir"`       // directory for log files
+	Sources      []any    `yaml:"sources"`       // custom proxy sources (merged with builtins)
+}
+
 // Config is the root configuration.
 type Config struct {
-	Server ServerConfig `yaml:"server"`
-	Pool   PoolConfig   `yaml:"pool"`
+	Server    ServerConfig    `yaml:"server"`
+	Pool      PoolConfig      `yaml:"pool"`
+	FreeProxy FreeProxyConfig `yaml:"freeproxy"`
 }
 
 // Default returns sensible defaults.
@@ -56,6 +68,20 @@ func Default() *Config {
 			Proxies: []ProxyEntry{
 				{Name: "direct", Type: "direct"},
 			},
+		},
+		FreeProxy: FreeProxyConfig{
+			Enabled: true,
+			// Default test URLs (tried in order, proxy is valid if any returns 2xx-3xx).
+			// All chosen for fast, China-friendly responses — free proxies scraped from
+			// Chinese sources usually can't reach US-based test endpoints like httpbin.org.
+			TestURLs: []string{
+				"http://myip.ipip.net", // ~130ms, returns just the IP
+				"http://www.baidu.com", // ~190ms, always 200
+				"http://cip.cc",        // ~4s, fallback
+			},
+			CrawlTimeout: 30, // fetching from international sources (geonode etc.) needs more time
+			Timeout:      8,  // TCP probe + each test URL (China-friendly endpoints are fast)
+			Concurrency:  50,
 		},
 	}
 }
@@ -124,17 +150,29 @@ func DefaultConfigPath() string {
 	switch runtime.GOOS {
 	case "windows":
 		if appdata := os.Getenv("APPDATA"); appdata != "" {
-			return filepath.Join(appdata, "proxypool", "config.yaml")
+			return filepath.Join(appdata, "PolyProxy", "config.yaml")
 		}
-		return filepath.Join(os.Getenv("USERPROFILE"), "proxypool", "config.yaml")
+		return filepath.Join(os.Getenv("USERPROFILE"), "PolyProxy", "config.yaml")
 	case "darwin":
 		home, _ := os.UserHomeDir()
-		return filepath.Join(home, "Library", "Application Support", "proxypool", "config.yaml")
+		return filepath.Join(home, "Library", "Application Support", "PolyProxy", "config.yaml")
 	default: // linux / bsd / others
 		if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
-			return filepath.Join(xdg, "proxypool", "config.yaml")
+			return filepath.Join(xdg, "PolyProxy", "config.yaml")
 		}
 		home, _ := os.UserHomeDir()
-		return filepath.Join(home, ".config", "proxypool", "config.yaml")
+		return filepath.Join(home, ".config", "PolyProxy", "config.yaml")
 	}
+}
+
+// Save writes the config back to the given path as YAML.
+func (c *Config) Save(path string) error {
+	data, err := yaml.Marshal(c)
+	if err != nil {
+		return fmt.Errorf("marshal config: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return fmt.Errorf("create config dir: %w", err)
+	}
+	return os.WriteFile(path, data, 0644)
 }

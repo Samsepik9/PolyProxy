@@ -1,4 +1,4 @@
-module github.com/jeff/proxypool
+module github.com/Samsepik9/PolyProxy
 
 go 1.24.2
 

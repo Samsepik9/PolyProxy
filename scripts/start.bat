@@ -1,5 +1,5 @@
 @echo off
-REM start.bat — launch proxypool on Windows.
+REM start.bat — launch PolyProxy on Windows.
 REM Usage: start.bat [--config PATH] [extra args...]
 setlocal
 
@@ -10,16 +10,16 @@ REM Detect arch
 if "%PROCESSOR_ARCHITECTURE%"=="AMD64" set HOST_ARCH=amd64
 if "%PROCESSOR_ARCHITECTURE%"=="ARM64" set HOST_ARCH=arm64
 
-set BIN=%ROOT%\bin\proxypool-windows-%HOST_ARCH%.exe
+set BIN=%ROOT%\bin\polyproxy-windows-%HOST_ARCH%.exe
 
 REM Default config bootstrap
 set NEEDS_CONFIG=1
-set "CFG_PATH=%APPDATA%\proxypool\config.yaml"
+set "CFG_PATH=%APPDATA%\PolyProxy\config.yaml"
 if not "%~1"=="-config" goto :parse_args
 set NEEDS_CONFIG=0
 :parse_args
 if not exist "%CFG_PATH%" if "%NEEDS_CONFIG%"=="1" (
-    if not exist "%APPDATA%\proxypool" mkdir "%APPDATA%\proxypool"
+    if not exist "%APPDATA%\PolyProxy" mkdir "%APPDATA%\PolyProxy"
     copy /Y "%ROOT%\configs\config.example.yaml" "%CFG_PATH%" >nul
     echo Bootstrapped config at %CFG_PATH% — edit and re-run.
     exit /b 0

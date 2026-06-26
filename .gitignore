@@ -4,6 +4,10 @@ bin/
 # Config files with real credentials (keep only example)
 configs/config.local.yaml
 configs/config.production.yaml
+configs/test.local.yaml
+
+# Logs
+configs/logs/
 
 # IDE / editor
 .idea/
@@ -11,8 +15,6 @@ configs/config.production.yaml
 *.swp
 *.swo
 *~
-.DS_Store
-Thumbs.db
 
 # Go workspace
 go.work
